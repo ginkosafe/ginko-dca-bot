@@ -1,11 +1,21 @@
 [
   {
-    "wallet": "YOUR_WALLET_PUBLIC_KEY",
-    "asset": "ASSET_PUBLIC_KEY",
-    "buy_frequency": "0 0 * * *",
+    "wallet": "9NfXunL8fqACo4WLTZ56oxLayJCQJNn2VAeY5Fh6ct3F",
+    "asset": "C1GDpJqEAYU4Q2wUCarHejbSgfMXpAtvSicgwxe9nH5N",
+    "buy_frequency": "0 0 0 */5 0",
     "buy_settings": {
-      "type": "worth",
-      "number": "100"
+      "type": "amount",
+      "number": "1_000_000"
+    },
+    "slippage": 100
+  },
+  {
+    "wallet": "92VwuWPWQzBKsCw8oF9uuiNbYAPF3CW2up9nT3wNUodj",
+    "asset": "JDW8aLpX46z6ShRNJCvLhqUoHNW77zxJzFUc5Xhhsfzf",
+    "buy_frequency": "0 0 0 */10 0",
+    "buy_settings": {
+      "type": "amount",
+      "number": "1_000_000"
     },
     "slippage": 100
   }

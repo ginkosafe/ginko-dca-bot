@@ -1,53 +1,54 @@
-import { config } from 'dotenv';
 import { Connection, PublicKey } from '@solana/web3.js';
+import { config } from 'dotenv';
 import { AccountData } from '@ginko/sdk';
+import { validateEnv } from '../src/types/config';
+import { logger, logError } from '../src/utils/logger';
 
 // Load environment variables
 config();
 
-const RPC_ENDPOINT = process.env.DCA_BOT_RPC_ENDPOINT;
+// Price API URL
+const PRICE_API_URL = process.env.PRICE_API_URL || 'https://api.ginko.xyz';
 
-if (!RPC_ENDPOINT) {
-  throw new Error('DCA_BOT_RPC_ENDPOINT environment variable is required');
+// Price information interface
+interface PriceInfo {
+  symbol: string;
+  price: number;
+  timestamp: number;
+  confidence?: number;
 }
 
-// Get command line arguments
-const [assetArg] = process.argv.slice(2);
-
-if (!assetArg) {
-  console.error('Usage: bun scripts/getAssetPrice.ts <asset>');
-  process.exit(1);
-}
-
-const main = async () => {
+async function main() {
   try {
-    const connection = new Connection(RPC_ENDPOINT);
-    const accountData = new AccountData(connection);
+    // Get asset public key from command line
+    if (!process.argv[2]) {
+      throw new Error('Please provide an asset symbol');
+    }
+    const symbol = process.argv[2];
 
-    // Get asset details
-    const asset = await accountData.asset(new PublicKey(assetArg));
-    if (!asset) {
-      throw new Error('Asset not found');
+    logger.info(`Fetching asset: ${symbol}`);
+
+    // Get price from API
+    logger.info(`Fetching price for symbol: ${symbol}`);
+    console.log(`${PRICE_API_URL}/price/${symbol}`);
+    const response = await fetch(`${PRICE_API_URL}/price/${symbol}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch price: ${response.statusText}`);
     }
 
-    // Get current price
-    const priceInfo = await accountData.getAssetPrice(asset.publicKey.toString());
-    if (!priceInfo) {
-      throw new Error('Failed to fetch price');
-    }
+    const price: PriceInfo = await response.json();
 
-    console.log('Asset Price:', {
-      symbol: asset.publicKey.toString(),
-      price: priceInfo.price,
-      timestamp: new Date(priceInfo.timestamp * 1000).toISOString(),
-      confidence: priceInfo.confidence
-    });
+    console.log(price);
 
-    process.exit(0);
+    // Log price information
+    logger.info('Price information:');
+    logger.info(`  Symbol: ${price.symbol}`);
+    logger.info(`  Price: ${price.price}`);
   } catch (error) {
-    console.error('Failed to get asset price:', (error as Error).message);
+    logError(error as Error);
     process.exit(1);
   }
-};
+}
 
 main(); 

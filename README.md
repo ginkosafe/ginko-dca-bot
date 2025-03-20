@@ -1,29 +1,30 @@
 # Ginko DCA Bot
 
-A Dollar-Cost Averaging (DCA) bot for the Ginko Protocol on Solana blockchain. The bot automatically executes trades at specified intervals based on your configuration.
+A Dollar-Cost Averaging (DCA) bot for the Ginko Protocol on Solana blockchain. This bot automatically executes trades at specified intervals using a DCA strategy.
 
 ## Features
 
-- Automated DCA trading on Solana
+- Automated DCA trading on Solana blockchain
 - Support for multiple wallets and assets
 - Configurable trade frequency using cron expressions
-- Trade by worth or amount
-- Automatic retry on failed trades
-- Comprehensive logging
-- Command-line tools for manual operations
+- Automatic retry mechanism for failed trades
+- Comprehensive logging system
+- Slippage protection
+- Single trade execution for testing
 
 ## Prerequisites
 
-- [Bun.sh](https://bun.sh) runtime
+- Node.js 16+
+- Bun.sh runtime
 - Solana wallet with private key
-- RPC endpoint for Solana network
+- Access to Solana RPC endpoint
 
 ## Installation
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/ginko-dca-bot.git
+git clone <repository-url>
 cd ginko-dca-bot
 ```
 
@@ -33,22 +34,20 @@ cd ginko-dca-bot
 bun install
 ```
 
-3. Configure environment variables:
-Create a `.env` file with:
+3. Create a `.env` file with your configuration:
 
 ```env
-DCA_BOT_RPC_ENDPOINT=your_rpc_endpoint
-DCA_BOT_PRIVATE_KEYS=key1,key2,key3
+DCA_BOT_RPC_ENDPOINT=<your-solana-rpc-endpoint>
+DCA_BOT_PRIVATE_KEYS=<private-key-1>,<private-key-2>,...
 ```
 
-4. Configure trading settings:
-Edit `config.json` with your trading parameters:
+4. Create a `config.json` file with your DCA settings:
 
 ```json
 [
   {
-    "wallet": "wallet_public_key",
-    "asset": "asset_public_key",
+    "wallet": "YOUR_WALLET_PUBLIC_KEY",
+    "asset": "ASSET_PUBLIC_KEY",
     "buy_frequency": "0 0 * * *",
     "buy_settings": {
       "type": "worth",
@@ -59,6 +58,25 @@ Edit `config.json` with your trading parameters:
 ]
 ```
 
+## Configuration
+
+### Environment Variables
+
+- `DCA_BOT_RPC_ENDPOINT`: Solana RPC node URL
+- `DCA_BOT_PRIVATE_KEYS`: Comma-separated list of wallet private keys
+
+### DCA Configuration
+
+Each entry in `config.json` supports:
+
+- `wallet`: Public key of the wallet to use
+- `asset`: Public key of the asset to trade
+- `buy_frequency`: Cron expression for trade timing
+- `buy_settings`:
+  - `type`: Either "worth" (fixed USD amount) or "amount" (fixed token amount)
+  - `number`: The amount to buy
+- `slippage`: Maximum allowed slippage in basis points (100 = 1%)
+
 ## Usage
 
 ### Start the DCA Bot
@@ -67,65 +85,53 @@ Edit `config.json` with your trading parameters:
 bun start
 ```
 
-### Command-line Tools
-
-1. Place a single order:
+### Run a Single Trade (Testing)
 
 ```bash
-bun place-order <wallet> <asset> <amount> [type=worth|amount] [slippage=100]
+bun run:single
 ```
 
-2. Cancel an order:
+### Development Mode
 
 ```bash
-bun cancel-order <order_id>
+bun dev
 ```
-
-3. Get asset list:
-
-```bash
-bun get-assets
-```
-
-4. Get asset price:
-
-```bash
-bun get-asset-price <asset>
-```
-
-## Configuration
-
-### Environment Variables
-
-- `DCA_BOT_RPC_ENDPOINT`: Solana RPC node address
-- `DCA_BOT_PRIVATE_KEYS`: Comma-separated list of wallet private keys
-
-### Trading Configuration (config.json)
-
-Each trading configuration object contains:
-
-- `wallet`: Wallet public key
-- `asset`: Asset public key
-- `buy_frequency`: Cron expression for trade timing
-- `buy_settings`:
-  - `type`: "worth" or "amount"
-  - `number`: Amount to trade
-- `slippage`: Maximum allowed slippage in basis points (100 = 1%)
 
 ## Logging
 
-- Trade logs: `./logs/YYYY-MM-DD.log`
-- Error logs: `./errors/YYYY-MM-DD-HH-mm-ss.log`
+- Trade logs are stored in `./logs/YYYY-MM-DD.log`
+- Error logs are stored in `./errors/YYYY-MM-DD-HH-mm-ss.log`
+
+## Scripts
+
+- `start`: Start the DCA bot
+- `dev`: Start the bot in development mode with auto-reload
+- `run:single`: Execute a single trade for testing
+- `get:assets`: List available assets
+- `build`: Build the project
+- `lint`: Run linter
+- `format`: Format code
 
 ## Development
 
-The project is built with TypeScript and uses:
+The project uses TypeScript and follows a modular architecture:
 
-- @solana/web3.js for Solana blockchain interaction
-- @coral-xyz/anchor for program interaction
-- node-cron for scheduling
-- winston for logging
+- `src/types/`: Type definitions and validation
+- `src/services/`: Core business logic
+- `src/utils/`: Utility functions
+- `scripts/`: Single-execution scripts
+- `sdk/`: Ginko Protocol SDK
+
+## Error Handling
+
+- Failed trades are automatically retried up to 5 times
+- Each retry uses exponential backoff
+- All errors are logged with context for debugging
 
 ## License
 
-MIT 
+[License Type]
+
+## Contributing
+
+[Contribution Guidelines] 

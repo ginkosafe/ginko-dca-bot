@@ -1,4 +1,4 @@
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair } from '@solana/web3.js';
 import { config } from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -12,21 +12,6 @@ config();
 
 async function main() {
   try {
-    // Load configuration
-    const configPath = path.join(process.cwd(), 'config.json');
-    const configFile = fs.readFileSync(configPath, 'utf-8');
-    const configJson = JSON.parse(configFile);
-    const configs = validateConfig(configJson);
-
-    // Get first configuration
-    const config = configs[0];
-    if (!config) {
-      throw new Error('No configuration found in config.json');
-    }
-
-    // Parse configuration
-    const parsedConfig = parseConfig(config);
-
     // Validate environment variables
     const env = validateEnv();
 
@@ -37,19 +22,32 @@ async function main() {
     const privateKey = env.DCA_BOT_PRIVATE_KEYS.split(',')[0].trim();
     const wallet = Keypair.fromSecretKey(bs58.decode(privateKey));
 
+    // Load configuration
+    const configPath = path.join(process.cwd(), 'config.json');
+    const configFile = fs.readFileSync(configPath, 'utf-8');
+    const configJson = JSON.parse(configFile);
+    const configs = validateConfig(configJson);
+
+    // Use first configuration
+    const config = configs[0];
+    if (!config) {
+      throw new Error('No configuration found in config.json');
+    }
+
+    const parsedConfig = parseConfig(config);
+
     // Create trade service
     const tradeService = new TradeService(connection, wallet);
 
-    // Execute trade
-    logger.info('Executing trade...');
-    logger.info(`Using configuration for asset: ${parsedConfig.asset.toString()}`);
+    // Execute single trade
+    logger.info('Executing single trade...');
     const success = await tradeService.executeTrade(parsedConfig);
 
-    if (!success) {
-      throw new Error('Trade failed after maximum retries');
+    if (success) {
+      logger.info('Trade executed successfully');
+    } else {
+      logger.error('Trade failed after maximum retries');
     }
-
-    logger.info('Trade executed successfully');
 
   } catch (error) {
     logError(error as Error);

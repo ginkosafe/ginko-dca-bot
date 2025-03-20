@@ -1,58 +1,70 @@
+import { Connection, Keypair } from '@solana/web3.js';
 import { config } from 'dotenv';
-import { DCAService } from './services/dca';
-import { DCAConfig } from './types';
-import { logError } from './services/logger';
+import fs from 'fs';
+import path from 'path';
+import bs58 from 'bs58';
+import { validateEnv, validateConfig, parseConfig } from './types/config';
+import { SchedulerService } from './services/scheduler.service';
+import { logger, logError } from './utils/logger';
 
 // Load environment variables
 config();
 
-const RPC_ENDPOINT = process.env.DCA_BOT_RPC_ENDPOINT;
-const PRIVATE_KEYS = process.env.DCA_BOT_PRIVATE_KEYS?.split(',') || [];
-
-if (!RPC_ENDPOINT) {
-  throw new Error('DCA_BOT_RPC_ENDPOINT environment variable is required');
-}
-
-if (!PRIVATE_KEYS.length) {
-  throw new Error('DCA_BOT_PRIVATE_KEYS environment variable is required');
-}
-
-// Load configuration from JSON file
-const loadConfig = async (): Promise<DCAConfig[]> => {
+async function main() {
   try {
-    const configFile = await import('../config.json', { assert: { type: 'json' } });
-    return configFile.default;
-  } catch (error) {
-    throw new Error(`Failed to load config.json: ${(error as Error).message}`);
-  }
-};
+    // Validate environment variables
+    const env = validateEnv();
 
-const main = async () => {
-  try {
-    const configs = await loadConfig();
-    const dcaService = new DCAService(RPC_ENDPOINT, configs, PRIVATE_KEYS);
+    // Create Solana connection
+    const connection = new Connection(env.DCA_BOT_RPC_ENDPOINT);
+
+    // Load private keys
+    const privateKeys = env.DCA_BOT_PRIVATE_KEYS.split(',').map(key => key.trim());
+    const wallets = privateKeys.map(key => Keypair.fromSecretKey(bs58.decode(key)));
+
+    // Load configuration
+    const configPath = path.join(process.cwd(), 'config.json');
+    const configFile = fs.readFileSync(configPath, 'utf-8');
+    const configJson = JSON.parse(configFile);
+    const configs = validateConfig(configJson);
+
+    // Create scheduler service for each wallet
+    const schedulers = new Map<string, SchedulerService>();
     
-    // Start the DCA service
-    dcaService.start();
+    for (const wallet of wallets) {
+      const scheduler = new SchedulerService(connection, wallet);
+      schedulers.set(wallet.publicKey.toString(), scheduler);
+    }
 
-    // Handle graceful shutdown
+    // Schedule jobs for each configuration
+    for (const config of configs) {
+      const parsedConfig = parseConfig(config);
+      const scheduler = schedulers.get(parsedConfig.wallet.toString());
+      
+      if (!scheduler) {
+        logError(`No wallet found for config: ${parsedConfig.wallet.toString()}`);
+        continue;
+      }
+
+      scheduler.scheduleJob(parsedConfig);
+      logger.info(`Scheduled DCA job for asset: ${parsedConfig.asset.toString()}`);
+    }
+
+    // Handle shutdown
     process.on('SIGINT', () => {
-      console.log('Shutting down DCA bot...');
-      dcaService.stop();
+      logger.info('Shutting down DCA bot...');
+      for (const scheduler of schedulers.values()) {
+        scheduler.stopAllJobs();
+      }
       process.exit(0);
     });
 
-    process.on('SIGTERM', () => {
-      console.log('Shutting down DCA bot...');
-      dcaService.stop();
-      process.exit(0);
-    });
+    logger.info('DCA bot started successfully');
 
-    console.log('DCA bot started successfully');
   } catch (error) {
     logError(error as Error);
     process.exit(1);
   }
-};
+}
 
 main(); 

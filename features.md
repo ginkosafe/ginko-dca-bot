@@ -1,6 +1,6 @@
 # DCA bot 功能列表
 
-基于“定投”策略（Dollar-Cost Averaging，简称 DCA）的自动化交易程序。它的核心理念是按照固定时间间隔（例如每天、每周或每月），以固定金额或固定数量买入某种资产（如比特币或股票），而不去关注短期市场波动。
+基于"定投"策略（Dollar-Cost Averaging，简称 DCA）的自动化交易程序。它的核心理念是按照固定时间间隔（例如每天、每周或每月），以固定金额或固定数量买入某种资产（如比特币或股票），而不去关注短期市场波动。
 
 我们会使用 @solana/web3.js@1 通过调用 ./sdk 创建 DCA bot
 
@@ -21,6 +21,10 @@
 
 - 使用 VersionTransaction 发送交易
 - 需要确认 Transaction 状态变为 confirmed
+- 所有交易必须使用 Versioned Transaction（version 0）以支持更多功能
+  - 使用 TransactionMessage 构建消息
+  - 使用 VersionedTransaction 创建交易
+  - 在发送交易前完成签名
 
 ## 配置参数
 
@@ -80,6 +84,8 @@
   - cancelOrder
   - getAssets
   - getAssetPrice
+  - getOrders
+  - getOrderByPublicKey
 3. dca-bot 依赖应该参考 "./sdk/package.json"，以确保 sdk 可以运行
 
 所有代码和注释应该以英语输出。
