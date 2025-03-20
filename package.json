@@ -1,37 +1,32 @@
 {
   "name": "ginko-dca-bot",
   "version": "0.1.0",
-  "description": "Dollar-Cost Averaging (DCA) bot for Ginko Protocol",
-  "main": "src/index.ts",
+  "description": "DCA bot for Ginko Protocol",
   "type": "module",
   "scripts": {
-    "start": "bun run src/index.ts",
+    "start": "bun src/index.ts",
     "test": "bun test",
-    "dev": "bun run --watch src/index.ts",
-    "run:single": "bun run src/scripts/single-trade.ts",
-    "build": "bun build src/index.ts --outdir ./dist --target node",
-    "lint": "eslint . --ext .ts",
-    "format": "prettier --write \"src/**/*.ts\""
+    "clean": "rm -rf dist",
+    "place-order": "bun scripts/placeOrder.ts",
+    "cancel-order": "bun scripts/cancelOrder.ts",
+    "get-assets": "bun scripts/getAssets.ts",
+    "get-asset-price": "bun scripts/getAssetPrice.ts"
   },
   "dependencies": {
-    "@ginko/sdk": "file:./sdk",
+    "@coral-xyz/anchor": "^0.30.1",
     "@solana/web3.js": "^1.95.8",
     "@solana/spl-token": "^0.4.9",
+    "@switchboard-xyz/on-demand": "1.2.65",
+    "zod": "^3.22.4",
     "bignumber.js": "^9.0.2",
-    "bs58": "^5.0.0",
-    "bun-types": "latest",
-    "cron": "^3.1.6",
-    "dotenv": "^16.4.5",
-    "winston": "^3.12.0",
-    "zod": "^3.22.4"
+    "node-cron": "^3.0.3",
+    "winston": "^3.11.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/node": "22.10.6",
-    "@types/bs58": "^4.0.4",
-    "@typescript-eslint/eslint-plugin": "^7.2.0",
-    "@typescript-eslint/parser": "^7.2.0",
-    "eslint": "^8.57.0",
-    "prettier": "^3.2.5",
+    "@types/bun": "1.1.6",
+    "@types/node-cron": "^3.0.11",
     "typescript": "5.3.3"
   }
 } 

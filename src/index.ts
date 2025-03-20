@@ -1,62 +1,58 @@
-#!/usr/bin/env bun
-import { Connection } from "@solana/web3.js";
-import { getDCAConfigs, getRpcEndpoint } from "./config";
-import { logError, logInfo } from "./services/logger";
-import { scheduleJobs } from "./services/scheduler";
+import { config } from 'dotenv';
+import { DCAService } from './services/dca';
+import { DCAConfig } from './types';
+import { logError } from './services/logger';
 
-/**
- * Ginko DCA Bot
- *
- * A Dollar-Cost Averaging (DCA) bot for the Ginko Protocol
- * Automatically buys assets at specified intervals regardless of price
- */
+// Load environment variables
+config();
 
-// Main function
-async function main() {
-  try {
-    // Display startup message
-    logInfo("Starting Ginko DCA Bot");
+const RPC_ENDPOINT = process.env.DCA_BOT_RPC_ENDPOINT;
+const PRIVATE_KEYS = process.env.DCA_BOT_PRIVATE_KEYS?.split(',') || [];
 
-    // Get RPC endpoint from config
-    const rpcEndpoint = getRpcEndpoint();
-    logInfo(`Using RPC endpoint: ${rpcEndpoint}`);
-
-    // Create Solana connection
-    const connection = new Connection(rpcEndpoint, "confirmed");
-
-    // Get DCA configurations
-    const configs = getDCAConfigs();
-
-    if (configs.length === 0) {
-      logInfo(
-        "No DCA configurations found. Please set up your configurations in .env file"
-      );
-      process.exit(1);
-    }
-
-    logInfo(`Loaded ${configs.length} DCA configurations`);
-
-    // Schedule DCA jobs
-    scheduleJobs(connection, configs);
-
-    // Keep process running
-    logInfo("DCA bot is running. Press Ctrl+C to exit.");
-
-    // Handle graceful shutdown
-    process.on("SIGINT", () => {
-      logInfo("Shutting down DCA bot...");
-      process.exit(0);
-    });
-
-    process.on("SIGTERM", () => {
-      logInfo("Shutting down DCA bot...");
-      process.exit(0);
-    });
-  } catch (error) {
-    logError("Failed to start DCA bot", { error });
-    process.exit(1);
-  }
+if (!RPC_ENDPOINT) {
+  throw new Error('DCA_BOT_RPC_ENDPOINT environment variable is required');
 }
 
-// Run the main function
-main();
+if (!PRIVATE_KEYS.length) {
+  throw new Error('DCA_BOT_PRIVATE_KEYS environment variable is required');
+}
+
+// Load configuration from JSON file
+const loadConfig = async (): Promise<DCAConfig[]> => {
+  try {
+    const configFile = await import('../config.json', { assert: { type: 'json' } });
+    return configFile.default;
+  } catch (error) {
+    throw new Error(`Failed to load config.json: ${(error as Error).message}`);
+  }
+};
+
+const main = async () => {
+  try {
+    const configs = await loadConfig();
+    const dcaService = new DCAService(RPC_ENDPOINT, configs, PRIVATE_KEYS);
+    
+    // Start the DCA service
+    dcaService.start();
+
+    // Handle graceful shutdown
+    process.on('SIGINT', () => {
+      console.log('Shutting down DCA bot...');
+      dcaService.stop();
+      process.exit(0);
+    });
+
+    process.on('SIGTERM', () => {
+      console.log('Shutting down DCA bot...');
+      dcaService.stop();
+      process.exit(0);
+    });
+
+    console.log('DCA bot started successfully');
+  } catch (error) {
+    logError(error as Error);
+    process.exit(1);
+  }
+};
+
+main(); 

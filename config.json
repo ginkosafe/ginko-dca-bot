@@ -1,0 +1,12 @@
+[
+  {
+    "wallet": "YOUR_WALLET_PUBLIC_KEY",
+    "asset": "ASSET_PUBLIC_KEY",
+    "buy_frequency": "0 0 * * *",
+    "buy_settings": {
+      "type": "worth",
+      "number": "100"
+    },
+    "slippage": 100
+  }
+] 

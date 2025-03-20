@@ -1,128 +1,104 @@
-import { AccountData } from "@ginko/sdk";
-import { Connection, PublicKey, VersionedTransaction } from "@solana/web3.js";
-import { DCAConfig, TransactionResult } from "../types";
-import { logError, logInfo, logTransaction } from "./logger";
-import { checkWalletBalance, createKeypairFromPrivateKey } from "./wallet";
-import BigNumber from "bignumber.js";
+import { Connection, PublicKey, Keypair } from '@solana/web3.js';
+import { BN } from '@coral-xyz/anchor';
+import { AccountData, getAssetPrice, parsePrice } from '@ginko/sdk';
+import { DCAConfig, TradeParams } from '../types';
+import { logTrade, logError } from './logger';
 
-// Max number of retries for a failed transaction
-const MAX_RETRIES = 5;
+export class TradeService {
+  private connection: Connection;
+  private accountData: AccountData;
+  private retryCount: number = 5;
 
-/**
- * Execute a DCA trade
- * @param connection Solana connection
- * @param config DCA configuration
- * @returns Transaction result
- */
-export const executeTrade = async (
-  connection: Connection,
-  config: DCAConfig
-): Promise<TransactionResult> => {
-  const keypair = createKeypairFromPrivateKey(config.privateKey);
-  let retry = 0;
+  constructor(rpcEndpoint: string) {
+    this.connection = new Connection(rpcEndpoint);
+    this.accountData = new AccountData(this.connection);
+  }
 
-  while (retry < MAX_RETRIES) {
-    try {
-      // Check wallet balance
-      const walletBalanceCheck = await checkWalletBalance(
-        connection,
-        keypair.publicKey,
-        config.buyType === "worth" ? config.buyNumber : 0.001 // If buying by amount, just check for fees
-      );
+  async executeTrade(config: DCAConfig, wallet: Keypair): Promise<void> {
+    let attempts = 0;
+    while (attempts < this.retryCount) {
+      try {
+        // Get wallet balance
+        const balance = await this.connection.getBalance(wallet.publicKey);
+        if (balance <= 0) {
+          throw new Error('Insufficient wallet balance');
+        }
 
-      if (!walletBalanceCheck.sufficientFunds) {
-        logError("Insufficient funds for trade", {
-          publicKey: keypair.publicKey.toBase58(),
-          requiredAmount: config.buyNumber,
-          actualBalance: walletBalanceCheck.balance,
+        // Get asset details
+        const asset = await this.accountData.asset(new PublicKey(config.asset));
+        if (!asset) {
+          throw new Error('Asset not found');
+        }
+
+        // Get current price
+        const priceInfo = await getAssetPrice(asset.publicKey.toString());
+        if (!priceInfo) {
+          throw new Error('Failed to fetch price');
+        }
+
+        // Calculate trade amount
+        const tradeAmount = config.buy_settings.type === 'worth'
+          ? new BN(config.buy_settings.number)
+          : new BN(config.buy_settings.number).mul(parsePrice(priceInfo.price.toString()).mantissa);
+
+        // Prepare trade parameters
+        const tradeParams: TradeParams = {
+          owner: wallet.publicKey,
+          asset: {
+            publicKey: new PublicKey(config.asset),
+            mint: asset.mint
+          },
+          quantity: tradeAmount,
+          priceOracle: asset.quotaPriceOracle,
+          tradeMint: asset.mint,
+          slippageBps: config.slippage
+        };
+
+        // Execute trade
+        const tx = await this.placeOrder(tradeParams);
+
+        // Log successful trade
+        logTrade({
+          timestamp: new Date().toISOString(),
+          marketPrice: priceInfo.price,
+          tradeAmount: tradeAmount.toString(),
+          tradeCount: attempts + 1,
+          transactionId: tx
         });
-        return {
-          success: false,
-          error: "Insufficient funds for trade",
-        };
+
+        return;
+      } catch (error) {
+        attempts++;
+        if (attempts >= this.retryCount) {
+          logError(error as Error, {
+            tradeCount: attempts
+          });
+          throw error;
+        }
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
       }
-
-      // Get asset information
-      const accountData = new AccountData(connection);
-      const asset = await accountData.asset(config.assetPublicKey);
-
-      // Use SDK to get market price (this is simplified - in a real implementation,
-      // you would use the price oracle specified in the asset)
-      // Placeholder for price fetching
-      const marketPrice = 100; // Example price - in real scenario, get this from oracle
-
-      // Calculate buy amount based on type
-      let buyAmount: number;
-      if (config.buyType === "worth") {
-        // Convert worth to amount
-        buyAmount = new BigNumber(config.buyNumber)
-          .dividedBy(marketPrice)
-          .toNumber();
-      } else {
-        buyAmount = config.buyNumber;
-      }
-
-      // For demonstration purposes, we're just logging the trade
-      // In a real implementation, you would:
-      // 1. Create a buy order transaction using the Ginko SDK
-      // 2. Sign and send the transaction
-      // 3. Wait for confirmation
-
-      logInfo(
-        `Creating buy order for ${buyAmount} units at price ${marketPrice}`
-      );
-
-      // Placeholder for creating a transaction
-      // const transaction = await createBuyOrderTransaction(
-      //   connection,
-      //   keypair.publicKey,
-      //   config.assetPublicKey,
-      //   buyAmount,
-      //   config.slippageBps
-      // );
-
-      // Placeholder for signing and sending transaction
-      // const signedTransaction = await keypair.signTransaction(transaction);
-      // const txSignature = await connection.sendTransaction(signedTransaction);
-
-      // Placeholder for waiting for confirmation
-      // await connection.confirmTransaction(txSignature);
-
-      // For now, we'll just simulate a successful transaction
-      const txSignature =
-        "simulated_" + Math.random().toString(36).substring(2, 15);
-
-      // Log the transaction
-      logTransaction(marketPrice, buyAmount, retry + 1, txSignature);
-
-      return {
-        success: true,
-        transactionSignature: txSignature,
-        price: marketPrice,
-        amount: buyAmount,
-        retry,
-      };
-    } catch (error) {
-      retry++;
-      logError(`Trade attempt ${retry} failed`, { error, config });
-
-      if (retry >= MAX_RETRIES) {
-        return {
-          success: false,
-          error: `Failed after ${MAX_RETRIES} attempts: ${error instanceof Error ? error.message : String(error)}`,
-          retry,
-        };
-      }
-
-      // Wait before retrying (exponential backoff)
-      const waitTime = Math.min(1000 * Math.pow(2, retry), 30000); // Max 30 seconds
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
   }
 
-  // This should never happen due to the while loop condition, but TypeScript requires a return
-  return {
-    success: false,
-    error: "Unknown error occurred",
-  };
-};
+  private async placeOrder(params: TradeParams): Promise<string> {
+    try {
+      // Place market order
+      const instructions = await this.accountData.placeOrder({
+        ...params,
+        type: 'market',
+        direction: 'buy',
+        limitPrice: null,
+        expireTime: 3600 // 1 hour expiration
+      });
+
+      // Send transaction
+      const tx = await this.connection.sendTransaction(instructions[0]);
+      await this.connection.confirmTransaction(tx);
+
+      return tx;
+    } catch (error) {
+      throw new Error(`Failed to place order: ${(error as Error).message}`);
+    }
+  }
+} 

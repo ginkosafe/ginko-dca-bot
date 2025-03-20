@@ -1,30 +1,29 @@
 # Ginko DCA Bot
 
-A Dollar-Cost Averaging (DCA) bot for the Ginko Protocol on Solana. This bot automatically buys assets at specified intervals regardless of market price, following the DCA investment strategy.
+A Dollar-Cost Averaging (DCA) bot for the Ginko Protocol on Solana blockchain. The bot automatically executes trades at specified intervals based on your configuration.
 
 ## Features
 
-- Configure multiple trading wallets with different assets
-- Schedule buy orders using cron expressions
-- Buy by fixed value or fixed amount
-- Set maximum slippage tolerance
-- Automatic retry on transaction failures
-- Detailed logging of all transactions and errors
-- Isolated execution of trades in child processes
-- Easy configuration through environment variables
+- Automated DCA trading on Solana
+- Support for multiple wallets and assets
+- Configurable trade frequency using cron expressions
+- Trade by worth or amount
+- Automatic retry on failed trades
+- Comprehensive logging
+- Command-line tools for manual operations
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) (v1.0.0 or higher)
-- Solana wallet with private key access
-- Access to a Solana RPC endpoint
+- [Bun.sh](https://bun.sh) runtime
+- Solana wallet with private key
+- RPC endpoint for Solana network
 
 ## Installation
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/ginko-dca-bot.git
+git clone https://github.com/your-username/ginko-dca-bot.git
 cd ginko-dca-bot
 ```
 
@@ -34,35 +33,30 @@ cd ginko-dca-bot
 bun install
 ```
 
-3. Set up environment variables by copying the example file:
-
-```bash
-cp .env.example .env
-```
-
-4. Edit `.env` file with your specific configuration:
+3. Configure environment variables:
+Create a `.env` file with:
 
 ```env
-# Solana RPC Endpoint
-DCA_BOT_RPC_ENDPOINT=https://api.mainnet-beta.solana.com
+DCA_BOT_RPC_ENDPOINT=your_rpc_endpoint
+DCA_BOT_PRIVATE_KEYS=key1,key2,key3
+```
 
-# Wallet private keys separated by comma (,)
-DCA_BOT_PRIVATE_KEYS=your_private_key_here
+4. Configure trading settings:
+Edit `config.json` with your trading parameters:
 
-# Asset address
-DCA_BOT_ASSET_ADDRESS=asset_public_key_here
-
-# Buy frequency in cron expression (e.g. 0 0 * * * for daily at midnight)
-DCA_BOT_CRON=0 0 * * *
-
-# Buy type (worth or amount)
-DCA_BOT_BUY_TYPE=worth
-
-# Buy amount (in SOL if worth, in token units if amount)
-DCA_BOT_BUY_NUMBER=0.1
-
-# Slippage in basis points (100 = 1%)
-DCA_BOT_SLIPPAGE_BPS=100
+```json
+[
+  {
+    "wallet": "wallet_public_key",
+    "asset": "asset_public_key",
+    "buy_frequency": "0 0 * * *",
+    "buy_settings": {
+      "type": "worth",
+      "number": "100"
+    },
+    "slippage": 100
+  }
+]
 ```
 
 ## Usage
@@ -73,69 +67,64 @@ DCA_BOT_SLIPPAGE_BPS=100
 bun start
 ```
 
-The bot will run continuously, executing trades according to the configured schedule.
+### Command-line Tools
 
-### Run a Single Trade
-
-For testing or manual execution:
+1. Place a single order:
 
 ```bash
-bun run:single
+bun place-order <wallet> <asset> <amount> [type=worth|amount] [slippage=100]
 ```
 
-### Development Mode
-
-Run with automatic reloading on file changes:
+2. Cancel an order:
 
 ```bash
-bun dev
+bun cancel-order <order_id>
 ```
 
-### Build for Production
-
-Create a standalone executable:
+3. Get asset list:
 
 ```bash
-bun build
+bun get-assets
 ```
 
-## Cron Expression Format
+4. Get asset price:
 
-The bot uses cron expressions to schedule trades. Here are some examples:
+```bash
+bun get-asset-price <asset>
+```
 
-- `0 0 * * *` - Daily at midnight
-- `0 */6 * * *` - Every 6 hours
-- `0 0 * * 1` - Weekly on Monday at midnight
-- `0 0 1 * *` - Monthly on the 1st at midnight
-- `*/10 * * * *` - Every 10 minutes
+## Configuration
 
-## Logs
+### Environment Variables
 
-- Transaction logs are stored in the `./logs/` directory, named by date (YYYY-MM-DD.log)
-- Error logs are stored in the `./errors/` directory, with timestamp in filename (YYYY-MM-DD-HH-mm-ss.log)
+- `DCA_BOT_RPC_ENDPOINT`: Solana RPC node address
+- `DCA_BOT_PRIVATE_KEYS`: Comma-separated list of wallet private keys
 
-## Security Considerations
+### Trading Configuration (config.json)
 
-- Never share your .env file or expose your private keys
-- Consider using a dedicated wallet with limited funds for the bot
-- Test with small amounts before using larger sums
+Each trading configuration object contains:
+
+- `wallet`: Wallet public key
+- `asset`: Asset public key
+- `buy_frequency`: Cron expression for trade timing
+- `buy_settings`:
+  - `type`: "worth" or "amount"
+  - `number`: Amount to trade
+- `slippage`: Maximum allowed slippage in basis points (100 = 1%)
+
+## Logging
+
+- Trade logs: `./logs/YYYY-MM-DD.log`
+- Error logs: `./errors/YYYY-MM-DD-HH-mm-ss.log`
 
 ## Development
 
-### Project Structure
+The project is built with TypeScript and uses:
 
-```
-├── src/
-│   ├── config/         # Configuration loading
-│   ├── services/       # Core services (wallet, logging, etc.)
-│   ├── scripts/        # Standalone scripts
-│   ├── types/          # TypeScript type definitions
-│   └── index.ts        # Main entry point
-├── logs/               # Transaction logs
-├── errors/             # Error logs
-├── .env                # Environment variables
-└── README.md           # This file
-```
+- @solana/web3.js for Solana blockchain interaction
+- @coral-xyz/anchor for program interaction
+- node-cron for scheduling
+- winston for logging
 
 ## License
 
