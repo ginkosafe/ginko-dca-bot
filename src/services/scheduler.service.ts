@@ -1,4 +1,4 @@
-import { CronJob } from 'cron';
+import { CronJob, sendAt } from 'cron';
 import { Connection, Keypair } from '@solana/web3.js';
 import { ParsedDCAConfig } from '../types/config';
 import { TradeService } from './trade.service';
@@ -17,6 +17,9 @@ export class SchedulerService {
 
     // Stop existing job if it exists
     this.stopJob(jobKey);
+
+    const frequency = sendAt(config.buy_frequency);
+    console.log({ frequency });
 
     try {
       const job = new CronJob(

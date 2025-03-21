@@ -1,7 +1,6 @@
 import {
   Connection,
   Keypair,
-  PublicKey,
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
@@ -48,6 +47,21 @@ export class TradeService {
         // Get latest blockhash
         const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash();
 
+
+        console.log({
+          owner: this.wallet.publicKey,
+          asset: {
+            publicKey: config.asset,
+            mint: asset.mint,
+          },
+          direction: 'buy',
+          type: 'market',
+          quantity: new BN(quantity.toString()),
+          priceOracle: asset.quotaPriceOracle,
+          tradeMint: config.trade_mint,
+          slippageBps: config.slippage,
+          expireTime: 3600, // 1 hour expiration
+        })
         // Create order instructions
         const orderInstructions = await this.instructionBuilder.placeOrder({
           owner: this.wallet.publicKey,
@@ -59,7 +73,7 @@ export class TradeService {
           type: 'market',
           quantity: new BN(quantity.toString()),
           priceOracle: asset.quotaPriceOracle,
-          tradeMint: asset.mint,
+          tradeMint: config.trade_mint,
           slippageBps: config.slippage,
           expireTime: 3600, // 1 hour expiration
         });

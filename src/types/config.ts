@@ -11,6 +11,7 @@ export const BuySettingsSchema = z.object({
 export const DCAConfigSchema = z.object({
   wallet: z.string(),
   asset: z.string(),
+  trade_mint: z.string(),
   buy_frequency: z.string(), // cron expression
   buy_settings: BuySettingsSchema,
   slippage: z.number().min(0).max(10000), // basis points (0-10000)
@@ -30,9 +31,10 @@ export const EnvSchema = z.object({
 });
 
 // Parsed configuration with PublicKey objects
-export interface ParsedDCAConfig extends Omit<DCAConfig, 'wallet' | 'asset'> {
+export interface ParsedDCAConfig extends Omit<DCAConfig, 'wallet' | 'asset' | 'trade_mint'> {
   wallet: PublicKey;
   asset: PublicKey;
+  trade_mint: PublicKey;
 }
 
 // Helper function to parse string to PublicKey
@@ -41,6 +43,7 @@ export function parseConfig(config: DCAConfig): ParsedDCAConfig {
     ...config,
     wallet: new PublicKey(config.wallet),
     asset: new PublicKey(config.asset),
+    trade_mint: new PublicKey(config.trade_mint),
   };
 }
 
