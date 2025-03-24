@@ -45,4 +45,93 @@
    2. 日志应该包括记录的时间信息，精确到秒
 8. 如果有错误需要记录错误信息到 ./errors/ 目录，文件名为 `{YYYY-MM-DD-HH-mm-ss}.log`
 
+## 目录结构
+
+- scripts: 存放单次运行的脚本
+- src/
+  - services
+    - scheduler.service.ts: 和 scheduler 相关的代码
+    - trade.service.ts: 调用 ./sdk 完成业务的代码
+  - types
+    - config.ts 类型定义和检查
+  - utils
+    - logger.ts: 日志输出工具
+- index.ts: 入口文件，启动 dca-bot
+
+### scripts
+
+例子:
+```
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { config } from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import bs58 from 'bs58';
+import { validateEnv, validateConfig, parseConfig } from '../src/types/config';
+import { TradeService } from '../src/services/trade.service';
+import { logger, logError } from '../src/utils/logger';
+
+// Load environment variables
+config();
+
+async function main() {
+  try {
+    // Load configuration
+    const configPath = path.join(process.cwd(), 'config.json');
+    const configFile = fs.readFileSync(configPath, 'utf-8');
+    const configJson = JSON.parse(configFile);
+    const configs = validateConfig(configJson);
+
+    // Get first configuration
+    const config = configs[0];
+    if (!config) {
+      throw new Error('No configuration found in config.json');
+    }
+
+    // Parse configuration
+    const parsedConfig = parseConfig(config);
+
+    // Validate environment variables
+    const env = validateEnv();
+
+    // Create Solana connection
+    const connection = new Connection(env.DCA_BOT_RPC_ENDPOINT);
+
+    // Load private key (use first key)
+    const privateKey = env.DCA_BOT_PRIVATE_KEYS.split(',')[0].trim();
+    const wallet = Keypair.fromSecretKey(bs58.decode(privateKey));
+
+    // Create trade service
+    const tradeService = new TradeService(connection, wallet);
+
+    // Execute trade
+    logger.info('Executing trade...');
+    logger.info(`Using configuration for asset: ${parsedConfig.asset.toString()}`);
+    const success = await tradeService.executeTrade(parsedConfig);
+
+    if (!success) {
+      throw new Error('Trade failed after maximum retries');
+    }
+
+    logger.info('Trade executed successfully');
+
+  } catch (error) {
+    logError(error as Error);
+    process.exit(1);
+  }
+}
+
+main(); 
+```
+
+应该包括的脚本:
+
+- placeOrder: 使用 config.json 中的第一个配置创建 Order
+- cancelOrder: 通过 publicKey 取消订单
+- getAssetPrice: 通过 asset symbol 获取 Price
+- getAssets: 获取所有支持的 assets
+- getOrderByPublicKey: 通过 order publicKey 获取订单信息
+
+所有脚本都应该使用 services 中的代码，保持和 dca-bot 一致
+
 所有代码和注释应该以英语输出。
