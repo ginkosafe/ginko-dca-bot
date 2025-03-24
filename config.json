@@ -1,0 +1,16 @@
+[
+  {
+    "wallet": "9NfXunL8fqACo4WLTZ56oxLayJCQJNn2VAeY5Fh6ct3F",
+    "asset": {
+      "mint": "Hi8paSfBZYzqKZQ4KR8cyDERTZiKaK6a7YEphUj1EyLK",
+      "symbol": "AAPL"
+    },
+    "trade_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "buy_frequency": "0 0 * * *",
+    "buy_settings": {
+      "type": "worth",
+      "number": "1000000"
+    },
+    "slippage": 100
+  }
+]

@@ -1,31 +1,72 @@
 # DCA bot 功能列表
 
-基于“定投”策略（Dollar-Cost Averaging，简称 DCA）的自动化交易程序。它的核心理念是按照固定时间间隔（例如每天、每周或每月），以固定金额或固定数量买入某种资产（如比特币或股票），而不去关注短期市场波动。
+基于"定投"策略（Dollar-Cost Averaging，简称 DCA）的自动化交易程序。它的核心理念是按照固定时间间隔（例如每天、每周或每月），以固定金额或固定数量买入某种资产（如比特币或股票），而不去关注短期市场波动。
 
-我们会使用 @solana/web3.js@1 通过调用 ginko-sdk 创建 DCA bot
+我们会使用 @solana/web3.js@1 通过调用 ./sdk 创建 DCA bot
+
+## 技术栈
+
+- bun.sh
+- typescript
+- solana/web3.js@1
+
+---
+
+- 确保所有代码都使用 typescript，而不是 javascript
+- 按照需求添加必须的依赖库
+- 依赖库必须支持 typescript并且类型安全
+
+
+## 文档
+
+### SDK
+
+应该严格按照 llms.txt 中的描述构建代码
+[sdk_llms_txt](./sdk/llms.txt)
+
+### Bun.sh
+
+[bun_sh_llms_txt](https://bun.sh/llms.txt)
+
+### Solana
+
+我们使用 @solana/web3.js 和 @coral-xyz/anchor 构建与 solana 相关的代码
+
+- 使用 VersionTransaction 发送交易
+- 需要确认 Transaction 状态变为 confirmed
+- 所有交易必须使用 Versioned Transaction（version 0）以支持更多功能
+  - 使用 TransactionMessage 构建消息
+  - 使用 VersionedTransaction 创建交易
+  - 在发送交易前完成签名
 
 ## 配置参数
 
+### 环境变量
+
+- DCA_BOT_RPC_ENDPOINT: solana rpc 节点地址
+- DCA_BOT_PRIVATE_KEYS，key: solana 使用的钱包private key, 以 "," 分隔
+
+### json config
+
 可以配置多种交易资产，每个资产都应该有一个配置参数
 
-- 交易钱包: 配置钱包的 private_key
-- Asset: DCA bot 只购买配置中的 asset
-- 买入频率: 使用 cron 表达式设置买入频率
-- 单次买入金额 / 数量: 配置单次买入的金额或者数量
-  - type: worth | amount 设置类型
-  - number: 购买数量
-- 滑点: 设置允许相比当前市价的滑点
+```
+[{
+  "wallet": "wallet public key",
+  "asset": {
+    "mint": "asset mint public key",
+    "symbol": "asset symbol"
+  },
+  "buy_frequency": "cron expression",
+  "buy_settings": {
+    "type": "worth or amount"
+    "number": "buy worth or buy amount"
+  },
+  "slippage": "same as the sdk slippage"
+}]
+```
 
-## @solana/web3.js
-
-- 从环境变量中获取所有的 private_keys
-  - Key 为 DCA_BOT_PRIVATE_KEYS，key 之间以 "," 分隔
-- 从环境变量中获取 rpc_endpoint
-  - Key 为 DCA_BOT_RPC_ENDPOINT
-- 使用 VersionTransaction 发送交易
-- 需要确认 Transaction 状态变为 confirmed
-
-## 单次交易流程
+## 交易流程
 
 1. 获取钱包余额
 2. 获取价格
@@ -47,6 +88,7 @@
 
 ## 目录结构
 
+- sdk: 和sdk相关的代码，不应该做任何修改
 - scripts: 存放单次运行的脚本
 - src/
   - services
@@ -56,9 +98,19 @@
     - config.ts 类型定义和检查
   - utils
     - logger.ts: 日志输出工具
-- index.ts: 入口文件，启动 dca-bot
+  - index.ts: 入口文件，启动 dca-bot
 
 ### scripts
+
+应该包括的脚本:
+
+- placeOrder.ts: 使用 config.json 中的第一个配置创建 Order
+- cancelOrder.ts: 通过 publicKey 取消订单
+- getAssetPrice.ts: 通过 asset symbol 获取 Price
+- getAssets.ts: 获取所有支持的 assets
+- getOrderByPublicKey.ts: 通过 order publicKey 获取订单信息
+
+所有脚本使用的方法应该来源于 src/services/ ,以保持和 src/index 启动后的表现一致。
 
 例子:
 ```
@@ -124,14 +176,40 @@ async function main() {
 main(); 
 ```
 
-应该包括的脚本:
+### config
 
-- placeOrder: 使用 config.json 中的第一个配置创建 Order
-- cancelOrder: 通过 publicKey 取消订单
-- getAssetPrice: 通过 asset symbol 获取 Price
-- getAssets: 获取所有支持的 assets
-- getOrderByPublicKey: 通过 order publicKey 获取订单信息
+config 应该包含以下属性:
 
-所有脚本都应该使用 services 中的代码，保持和 dca-bot 一致
+```
+{
+  "wallet": "public_key",
+  "asset": {
+    "mint": "asset_public_key",
+    "symbol": "asset_symbol"
+  },
+  "trade_mint": "public_key",
+  "buy_frequency": "*/5 * * * *",
+  "buy_settings": {
+    "type": "amount",
+    "number": "1000000"
+  },
+  "slippage": 100
+}
+```
+
+- trade_mint 应该是可配置的，对应 sdk 中的 trade_mint
+- publicKey 应该检查是否符合 solana/web3.js 中 publicKey 的标准
+
+### getAssetPrice
+
+应该根据 [price_api](./price_api.md) 示例修改代码
+
+代码使用 fetch price api
+
+```
+const response = await fetch(`${PRICE_API_URL}/price/${symbol}`);
+        const price: PriceInfo = await response.json();
+        return price;
+```
 
 所有代码和注释应该以英语输出。
