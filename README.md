@@ -28,20 +28,26 @@ git clone <repository-url>
 cd ginko-dca-bot
 ```
 
-2. Install dependencies:
+2. Initialize and update the SDK submodule:
+
+```bash
+git submodule update --init --recursive
+```
+
+3. Install dependencies:
 
 ```bash
 bun install
 ```
 
-3. Create a `.env` file with your configuration:
+4. Create a `.env` file with your configuration:
 
 ```env
 DCA_BOT_RPC_ENDPOINT=<your-solana-rpc-endpoint>
 DCA_BOT_PRIVATE_KEYS=<private-key-1>,<private-key-2>,...
 ```
 
-4. Create a `config.json` file with your DCA settings:
+5. Create a `config.json` file with your DCA settings:
 
 ```json
 [
